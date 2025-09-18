@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ფილმები{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Plyr Universal Video Player -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.8.3/plyr.css">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-brand">
+                <i class="fas fa-film"></i>
+                ფილმები
+            </a>
+
+            <!-- Search form in navbar -->
+            <div class="nav-search">
+                <form action="{{ url_for('index') }}" method="GET" class="search-form">
+                    <div class="search-input-group">
+                        <input type="text" name="search" placeholder="ძიება ფილმებში..."
+                               value="{{ request.args.get('search', '') }}" class="search-input">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="nav-links">
+                {% if session.user_id %}
+                    <div class="user-menu">
+                        <span class="user-greeting">
+                            <i class="fas fa-user"></i>
+                            {{ session.user_name }}
+                        </span>
+                        <div class="dropdown-menu">
+                            <a href="{{ url_for('profile') }}">
+                                <i class="fas fa-user-circle"></i>
+                                პროფილი
+                            </a>
+                            {% if session.user_role in ['admin', 'moderator'] %}
+                                <a href="{{ url_for('add_movie') }}">
+                                    <i class="fas fa-plus"></i>
+                                    ფილმის დამატება
+                                </a>
+                            {% endif %}
+                            <a href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt"></i>
+                                გამოსვლა
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link">
+                        <i class="fas fa-sign-in-alt"></i>
+                        შესვლა
+                    </a>
+                    <a href="{{ url_for('register') }}" class="nav-link">
+                        <i class="fas fa-user-plus"></i>
+                        რეგისტრაცია
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span class="alert-icon">
+                                {% if category == 'success' %}
+                                    <i class="fas fa-check-circle"></i>
+                                {% elif category == 'error' %}
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                {% else %}
+                                    <i class="fas fa-info-circle"></i>
+                                {% endif %}
+                            </span>
+                            <span class="alert-message">{{ message }}</span>
+                            <button class="alert-close" onclick="this.parentElement.style.display='none'">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Universal Video Player Modal -->
+    <div id="videoPlayerModal" class="video-player-modal">
+        <div class="video-player-container">
+            <div class="video-player-header">
+                <h3 id="videoPlayerTitle"></h3>
+                <button onclick="closeVideoPlayer()" class="video-player-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="videoPlayerContent" class="video-player-content">
+                <!-- Video player will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> ფილმის წაშლა</h3>
+            </div>
+            <div class="modal-body">
+                <p>დარწმუნებული ხართ, რომ გსურთ <strong><span id="movieToDelete"></span></strong>-ის წაშლა?</p>
+                <p class="warning-text">ეს მოქმედება შეუქცევადია და წაშლის ყველა დაკავშირებულ მონაცემს.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">გაუქმება</button>
+                <form id="deleteForm" method="POST" style="display: inline;" action="">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i>
+                        წაშლა
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; 2025 ფილმები - ყველა უფლება დაცულია</p>
+            <div class="footer-links">
+                <a href="#">კონტაქტი</a>
+                <a href="#">წესები</a>
+                <a href="#">კონფიდენციალობა</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Plyr Universal Video Player -->
+    <script src="https://cdn.plyr.io/3.8.3/plyr.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
