@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}შესვლა - ფილმები{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="auth-form-container">
+        <div class="auth-form">
+            <h2><i class="fas fa-sign-in-alt"></i> შესვლა</h2>
+
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                <div class="form-group">
+                    <label for="email"><i class="fas fa-envelope"></i> ელექტრონული ფოსტა</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock"></i> პაროლი</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full">
+                    <i class="fas fa-sign-in-alt"></i>
+                    შესვლა
+                </button>
+            </form>
+
+            <div class="auth-link">
+                <p>არ გაქვთ ანგარიში? <a href="{{ url_for('register') }}">რეგისტრაცია</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
