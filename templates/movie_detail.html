@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} - ფილმები{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="movie-detail">
+        <div class="movie-header">
+            <div class="movie-poster-large">
+                <img src="{{ movie.poster }}" alt="{{ movie.title }}"
+                     onerror="this.src='/static/img/default-poster.jpg'">
+                <div class="poster-overlay">
+                    {% if session.user_id %}
+                        <button class="favorite-btn-large {{ 'active' if is_favorite }}"
+                                data-movie-id="{{ movie.id }}"
+                                onclick="toggleFavorite({{ movie.id }})">
+                            <i class="{{ 'fas' if is_favorite else 'far' }} fa-heart"></i>
+                            {{ 'ფავორიტებში' if is_favorite else 'ფავორიტებში დამატება' }}
+                        </button>
+                    {% endif %}
+                    {% if session.user_role in ['admin', 'moderator'] %}
+                        <button class="delete-btn-large" onclick="confirmDelete({{ movie.id }}, '{{ movie.title }}')">
+                            <i class="fas fa-trash"></i>
+                            ფილმის წაშლა
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="movie-info-detailed">
+                <h1 class="movie-title-large">{{ movie.title }}</h1>
+
+                <div class="movie-meta-detailed">
+                    <span class="genre-badge">{{ movie.genre }}</span>
+                    <span class="year-badge">{{ movie.year }}</span>
+                    {% if movie.duration > 0 %}
+                        <span class="duration-badge">
+                            <i class="fas fa-clock"></i>
+                            {{ movie.duration }} წუთი
+                        </span>
+                    {% endif %}
+                </div>
+
+                {% if movie.avg_rating > 0 %}
+                    <div class="rating-display">
+                        <div class="stars-display">
+                            {% for i in range(1, 6) %}
+                                <i class="fas fa-star {{ 'active' if i <= movie.avg_rating|round else '' }}"></i>
+                            {% endfor %}
+                        </div>
+                        <span class="rating-text">{{ "%.1f"|format(movie.avg_rating) }}/5</span>
+                        <span class="rating-count">({{ movie.rating_count }} შეფასება)</span>
+                    </div>
+                {% endif %}
+
+                {% if movie.director %}
+                    <div class="movie-director-info">
+                        <i class="fas fa-user-tie"></i>
+                        <strong>რეჟისორი:</strong> {{ movie.director }}
+                    </div>
+                {% endif %}
+
+                {% if movie.cast %}
+                    <div class="movie-cast-info">
+                        <i class="fas fa-users"></i>
+                        <strong>მსახიობები:</strong> {{ movie.cast }}
+                    </div>
+                {% endif %}
+
+                <div class="movie-description-full">
+                    <h3><i class="fas fa-info-circle"></i> აღწერა</h3>
+                    <p>{{ movie.description }}</p>
+                </div>
+
+                <div class="movie-actions-detailed">
+                    <button onclick="openVideoPlayer('{{ movie.video_url }}', '{{ movie.title }}')" class="btn btn-primary btn-large">
+                        <i class="fas fa-play"></i>
+                        ფილმის ყურება
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Universal Video Player Modal -->
+        <div id="videoPlayerModal" class="video-player-modal">
+            <div class="video-player-container">
+                <div class="video-player-header">
+                    <h3 id="videoPlayerTitle"></h3>
+                    <button onclick="closeVideoPlayer()" class="video-player-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="videoPlayerContent" class="video-player-content">
+                    <!-- Video player will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> ფილმის წაშლა</h3>
+                </div>
+                <div class="modal-body">
+                    <p>დარწმუნებული ხართ, რომ გსურთ <strong id="movieToDelete"></strong>-ის წაშლა?</p>
+                    <p class="warning-text">ეს მოქმედება შეუქცევადია და წაშლის ყველა დაკავშირებულ მონაცემს.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeDeleteModal()">გაუქმება</button>
+                    <form id="deleteForm" method="POST" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i>
+                            წაშლა
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rating Form -->
+        {% if session.user_id %}
+            <div class="rating-section">
+                <h3><i class="fas fa-star"></i> შეაფასეთ ფილმი</h3>
+                <form action="{{ url_for('rate_movie', movie_id=movie.id) }}" method="POST" class="rating-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                    <div class="stars-input">
+                        {% for i in range(1, 6) %}
+                            <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}"
+                                   {{ 'checked' if user_rating and user_rating.rating == i else '' }}>
+                            <label for="star{{ i }}" class="star-label">
+                                <i class="fas fa-star"></i>
+                            </label>
+                        {% endfor %}
+                    </div>
+
+                    <div class="review-input">
+                        <label for="review">რეცენზია (არასავალდებულო):</label>
+                        <textarea name="review" id="review" rows="4"
+                                  placeholder="დაწერეთ თქვენი აზრი ფილმის შესახებ...">{{ user_rating.review if user_rating else '' }}</textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-star"></i>
+                        {{ 'შეფასების განახლება' if user_rating else 'შეფასება' }}
+                    </button>
+                </form>
+            </div>
+        {% endif %}
+
+        <!-- Reviews Section -->
+        {% if ratings %}
+            <div class="reviews-section">
+                <h3><i class="fas fa-comments"></i> რეცენზიები</h3>
+                <div class="reviews-list">
+                    {% for rating in ratings %}
+                        <div class="review-item">
+                            <div class="review-header">
+                                <div class="reviewer-info">
+                                    <strong>{{ rating.name }} {{ rating.surname }}</strong>
+                                    <div class="review-rating">
+                                        {% for i in range(1, 6) %}
+                                            <i class="fas fa-star {{ 'active' if i <= rating.rating else '' }}"></i>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="review-date">{{ rating.created_at }}</div>
+                            </div>
+                            <div class="review-content">{{ rating.review }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
