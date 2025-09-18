@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}მთავარი - ფილმები{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Advanced Search Filters -->
+    <div class="filters-section">
+        <h2 class="section-title">
+            <i class="fas fa-filter"></i>
+            ფილტრები
+        </h2>
+        <form action="{{ url_for('index') }}" method="GET" class="filters-form">
+            <input type="hidden" name="search" value="{{ search_query }}">
+
+            <div class="filter-group">
+                <label for="genre">ჟანრი:</label>
+                <select name="genre" id="genre">
+                    <option value="">ყველა ჟანრი</option>
+                    {% for genre_row in genres %}
+                        <option value="{{ genre_row.genre }}" {% if genre_filter == genre_row.genre %}selected{% endif %}>
+                            {{ genre_row.genre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="year">წელი:</label>
+                <select name="year" id="year">
+                    <option value="">ყველა წელი</option>
+                    {% for year_row in years %}
+                        <option value="{{ year_row.year }}" {% if year_filter == year_row.year|string %}selected{% endif %}>
+                            {{ year_row.year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="rating">მინ. რეიტინგი:</label>
+                <select name="rating" id="rating">
+                    <option value="">ყველა რეიტინგი</option>
+                    <option value="4" {% if rating_filter == '4' %}selected{% endif %}>4+ ⭐</option>
+                    <option value="3" {% if rating_filter == '3' %}selected{% endif %}>3+ ⭐</option>
+                    <option value="2" {% if rating_filter == '2' %}selected{% endif %}>2+ ⭐</option>
+                    <option value="1" {% if rating_filter == '1' %}selected{% endif %}>1+ ⭐</option>
+                </select>
+            </div>
+
+            <button type="submit" class="filter-apply-btn">
+                <i class="fas fa-search"></i>
+                ძიება
+            </button>
+
+            {% if search_query or genre_filter or year_filter or rating_filter %}
+                <a href="{{ url_for('index') }}" class="filter-clear-btn">
+                    <i class="fas fa-times"></i>
+                    გასუფთავება
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Results header -->
+    {% if search_query or genre_filter or year_filter or rating_filter %}
+        <div class="search-results-header">
+            <h3>
+                <i class="fas fa-search"></i>
+                ძიების შედეგები
+                {% if search_query %}
+                    "{{ search_query }}" მიხედვით
+                {% endif %}
+            </h3>
+        </div>
+    {% else %}
+        <h1 class="page-title">
+            <i class="fas fa-star"></i>
+            უახლესი ფილმები
+        </h1>
+    {% endif %}
+
+    <!-- Movies Grid - Enhanced for 6 movies per row -->
+    {% if movies %}
+        <div class="movies-grid movies-grid-6">
+            {% for movie in movies %}
+                <div class="movie-card modern-card">
+                    <div class="movie-poster">
+                        <img src="{{ movie.poster }}" alt="{{ movie.title }}"
+                             onerror="this.src='/static/img/default-poster.jpg'">
+                        <div class="movie-overlay">
+                            <button onclick="openVideoPlayer('{{ movie.video_url }}', '{{ movie.title }}')" class="watch-btn">
+                                <i class="fas fa-play"></i>
+                                ყურება
+                            </button>
+                            <a href="{{ url_for('movie_detail', movie_id=movie.id) }}" class="watch-btn details-btn">
+                                <i class="fas fa-info-circle"></i>
+                                დეტალები
+                            </a>
+                            {% if session.user_id %}
+                                <button class="favorite-btn" data-movie-id="{{ movie.id }}">
+                                    <i class="far fa-heart"></i>
+                                </button>
+                            {% endif %}
+                            {% if session.user_role in ['admin', 'moderator'] %}
+                                <button class="delete-btn" onclick="confirmDelete({{ movie.id }}, '{{ movie.title }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            {% endif %}
+                        </div>
+                        {% if movie.avg_rating > 0 %}
+                            <div class="movie-rating">
+                                <i class="fas fa-star"></i>
+                                {{ "%.1f"|format(movie.avg_rating) }}
+                                {% if movie.rating_count > 0 %}
+                                    <span class="rating-count">({{ movie.rating_count }})</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="movie-info">
+                        <h3 class="movie-title">{{ movie.title }}</h3>
+                        <p class="movie-meta">
+                            <span class="genre">{{ movie.genre }}</span>
+                            <span class="year">({{ movie.year }})</span>
+                        </p>
+                        {% if movie.director %}
+                            <p class="movie-director">
+                                <i class="fas fa-user-tie"></i>
+                                {{ movie.director }}
+                            </p>
+                        {% endif %}
+                        {% if movie.duration > 0 %}
+                            <p class="movie-duration">
+                                <i class="fas fa-clock"></i>
+                                {{ movie.duration }} წუთი
+                            </p>
+                        {% endif %}
+                        <p class="movie-description">{{ movie.description[:100] }}{% if movie.description|length > 100 %}...{% endif %}</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-movies">
+            <i class="fas fa-film"></i>
+            <h3>ფილმები ვერ მოიძებნა</h3>
+            <p>სცადეთ სხვა საძიებო პარამეტრები</p>
+            {% if search_query or genre_filter or year_filter or rating_filter %}
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home"></i>
+                    ყველა ფილმი
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Universal Video Player Modal -->
+    <div id="videoPlayerModal" class="video-player-modal">
+        <div class="video-player-container">
+            <div class="video-player-header">
+                <h3 id="videoPlayerTitle"></h3>
+                <button onclick="closeVideoPlayer()" class="video-player-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="videoPlayerContent" class="video-player-content">
+                <!-- Video player will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> ფილმის წაშლა</h3>
+            </div>
+            <div class="modal-body">
+                <p>დარწმუნებული ხართ, რომ გსურთ <strong id="movieToDelete"></strong>-ის წაშლა?</p>
+                <p class="warning-text">ეს მოქმედება შეუქცევადია და წაშლის ყველა დაკავშირებულ მონაცემს.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">გაუქმება</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i>
+                        წაშლა
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
